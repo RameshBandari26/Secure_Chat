@@ -1,0 +1,40 @@
+import React from "react";
+
+// Inline SVG version of /public/logo.svg, so it can be sized and
+// colored via props without an extra network request.
+function Logo({ size = 36, showText = false, textClassName = "" }) {
+  return (
+    <div className="logo-wrap">
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 64 64"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="secureChatGradientInline" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ff6a00" />
+            <stop offset="100%" stopColor="#5f10d5" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M32 4C16.5 4 4 15.2 4 29c0 8 4.2 15.1 10.8 19.7-.4 3.4-1.8 6.9-4.4 9.9a1 1 0 0 0 1 1.6c5.4-1.1 9.9-3.4 13.3-6 2.3.5 4.7.8 7.3.8 15.5 0 28-11.2 28-25S47.5 4 32 4z"
+          fill="url(#secureChatGradientInline)"
+        />
+        <rect x="24" y="27" width="16" height="13" rx="3" fill="#ffffff" />
+        <path
+          d="M27 27v-4a5 5 0 0 1 10 0v4"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+        <circle cx="32" cy="32.5" r="1.8" fill="url(#secureChatGradientInline)" />
+        <rect x="31.1" y="33.5" width="1.8" height="3" rx="0.6" fill="url(#secureChatGradientInline)" />
+      </svg>
+      {showText && <span className={`logo-text ${textClassName}`}>Secure Chat</span>}
+    </div>
+  );
+}
+
+export default Logo;

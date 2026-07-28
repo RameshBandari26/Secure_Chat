@@ -1,0 +1,83 @@
+.passphrase-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 16px;
+}
+
+.passphrase-modal-box {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  font-family: "Poppins", sans-serif;
+}
+
+.passphrase-modal-box .logo-wrap {
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.passphrase-modal-box h2 {
+  margin-bottom: 10px;
+  font-size: 19px;
+}
+
+.passphrase-modal-box p {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+.passphrase-modal-box input {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: #eee;
+  border-radius: 8px;
+  outline: none;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+
+.passphrase-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.passphrase-cancel-btn,
+.passphrase-unlock-btn {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.passphrase-cancel-btn {
+  background: #eee;
+  color: #444;
+}
+
+.passphrase-cancel-btn:hover {
+  background: #ddd;
+}
+
+.passphrase-unlock-btn {
+  background: #5f10d5;
+  color: #fff;
+}
+
+.passphrase-unlock-btn:hover {
+  background: #4a0dab;
+}
