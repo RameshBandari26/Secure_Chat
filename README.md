@@ -6,15 +6,6 @@ A modern real-time chat application built with the **MERN Stack**, featuring sec
 
 * **Frontend (Netlify):** https://securechat-platform.netlify.app/
 
-## 📸 Preview
-
-> Add screenshots of your application here.
-
-| Login          | Chat           |
-| -------------- | -------------- |
-| Add Screenshot | Add Screenshot |
-
----
 
 ## ✨ Features
 
