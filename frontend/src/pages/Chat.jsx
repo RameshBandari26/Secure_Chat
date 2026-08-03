@@ -54,6 +54,22 @@ async function toDisplayMessage(raw, cryptoKey) {
   }
 }
 
+function formatDateHeader(date) {
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const today = new Date();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffMs = todayMidnight.getTime() - target.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return target.toLocaleDateString([], {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function Avatar({ user, size = 44 }) {
   if (user?.avatar) {
     return (
@@ -146,6 +162,18 @@ function Chat() {
     }
   };
 
+  const markRoomAsRead = async (roomId) => {
+    if (!roomId) return;
+    try {
+      await api.post("/api/messages/read", { room: roomId });
+      setConnections((prev) =>
+        prev.map((c) => (c.room === roomId ? { ...c, unreadCount: 0 } : c))
+      );
+    } catch {
+      // Ignore transient read-state failures; the next fetch will sync.
+    }
+  };
+
   useEffect(() => {
     fetchConnections();
     fetchIncomingRequests();
@@ -168,7 +196,48 @@ function Chat() {
       // we only ever join one room at a time (see effect below).
       if (message.room === currentRoomRef.current) {
         setRawMessages((prev) => [...prev, message]);
+
+        if (message.sender?._id !== currentUser.id) {
+          markRoomAsRead(message.room);
+        }
       }
+    });
+
+    socket.on("chatSummaryUpdate", (update) => {
+      setConnections((prev) =>
+        prev
+          .map((chat) => {
+            if (chat.room !== update.room) return chat;
+
+            const isActive = update.room === currentRoomRef.current;
+            const unreadCount = isActive
+              ? 0
+              : update.shouldIncrementUnread
+              ? (chat.unreadCount || 0) + 1
+              : chat.unreadCount || 0;
+            const preview = update.deletedForEveryone
+              ? update.isOwnMessage
+                ? "You deleted this message"
+                : "This message was deleted"
+              : update.isOwnMessage
+              ? "You sent a secure message"
+              : "Encrypted message";
+
+            return {
+              ...chat,
+              unreadCount,
+              lastMessagePreview: preview,
+              lastMessageAt: update.createdAt,
+            };
+          })
+          .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt))
+      );
+    });
+
+    socket.on("chatRead", ({ room: readRoom }) => {
+      setConnections((prev) =>
+        prev.map((chat) => (chat.room === readRoom ? { ...chat, unreadCount: 0 } : chat))
+      );
     });
 
     socket.on("connectionRequest", (request) => {
@@ -208,6 +277,11 @@ function Chat() {
     return () => {
       socket.emit("leaveRoom", room);
     };
+  }, [room]);
+
+  useEffect(() => {
+    if (!room) return;
+    markRoomAsRead(room);
   }, [room]);
 
   // Load ciphertext history for the currently open conversation. This
@@ -407,13 +481,31 @@ function Chat() {
                 key={u._id}
                 className={`user-list-item ${
                   selectedUser?._id === u._id ? "active" : ""
-                }`}
+                } ${u.unreadCount > 0 ? "unread" : ""}`}
                 onClick={() => setSelectedUser(u)}
               >
                 <Avatar user={u} />
-                <span className="user-info">
-                  <span className="user-name">{u.name}</span>
-                </span>
+                <div className="user-info">
+                  <div className="user-name-row">
+                    <span className="user-name">{u.name}</span>
+                    {u.lastMessageAt && (
+                      <span className="sidebar-time">
+                        {new Date(u.lastMessageAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  <div className="user-preview-row">
+                    <span className="user-preview">
+                      {u.lastMessagePreview || "No messages yet"}
+                    </span>
+                    {u.unreadCount > 0 && (
+                      <span className="unread-badge">{u.unreadCount}</span>
+                    )}
+                  </div>
+                </div>
               </button>
             ))
           )}
@@ -453,14 +545,26 @@ function Chat() {
                   ) : displayMessages.length === 0 ? (
                     <p className="chat-empty">No messages yet. Say hello!</p>
                   ) : (
-                    displayMessages.map((msg) => {
+                    displayMessages.map((msg, index) => {
                       const isOwn = currentUser && msg.sender?._id === currentUser.id;
                       const isDeleted = msg.deletedForEveryone;
+                      const messageDate = new Date(msg.createdAt);
+                      const previousMessage = displayMessages[index - 1];
+                      const previousDate = previousMessage ? new Date(previousMessage.createdAt) : null;
+                      const shouldShowDateSeparator =
+                        !previousDate ||
+                        messageDate.toDateString() !== previousDate.toDateString();
+
                       return (
-                        <div
-                          key={msg._id}
-                          className={`chat-bubble ${isOwn ? "own" : "other"}`}
-                        >
+                        <React.Fragment key={msg._id}>
+                          {shouldShowDateSeparator && (
+                            <div className="date-separator">
+                              <span>{formatDateHeader(messageDate)}</span>
+                            </div>
+                          )}
+                          <div
+                            className={`chat-bubble ${isOwn ? "own" : "other"}`}
+                          >
                           {!isDeleted && (
                             <button
                               className="bubble-menu-btn"
@@ -488,7 +592,9 @@ function Chat() {
 
                           <p className={`chat-content ${isDeleted ? "deleted" : ""}`}>
                             {isDeleted
-                              ? "🚫 This message was deleted"
+                              ? isOwn
+                                ? "You deleted this message"
+                                : "This message was deleted"
                               : msg.decryptError
                               ? "🔒 Unable to decrypt (wrong passphrase?)"
                               : msg.plaintext}
@@ -500,7 +606,8 @@ function Chat() {
                             })}
                           </span>
                         </div>
-                      );
+                      </React.Fragment>
+                    );
                     })
                   )}
                   <div ref={bottomRef} />

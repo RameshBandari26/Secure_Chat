@@ -46,32 +46,24 @@ const messageSchema = new mongoose.Schema(
     //   the actual ciphertext/iv from the database (real deletion,
     //   not just hiding it) and leaves a "message was deleted"
     //   tombstone that both people see.
-    deletedFor: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    deletedForEveryone: {
-      type: Boolean,
-      default: false,
-    },
-    // "Delete for me": ids of users who no longer want to see this
-    // message in their own view. The message still exists for anyone
-    // else in the conversation.
     deletedFor: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "User",
       default: [],
     },
-    // "Delete for everyone": only the original sender can do this.
-    // When true, ciphertext/iv are wiped from the document (real
-    // deletion, not just hidden) and the client renders a
-    // "This message was deleted" placeholder instead.
     deletedForEveryone: {
       type: Boolean,
       default: false,
     },
+    deletedAt: {
+      type: Date,
+    },
+    readBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

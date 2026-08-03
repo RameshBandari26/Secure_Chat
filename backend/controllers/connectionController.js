@@ -1,5 +1,10 @@
 const Connection = require("../models/Connection");
+const Message = require("../models/Message");
 const User = require("../models/User");
+
+function getDirectRoomId(idA, idB) {
+  return ["dm", ...[String(idA), String(idB)].sort()].join("_");
+}
 
 function toPublicUser(user) {
   if (!user) return null;
@@ -174,14 +179,65 @@ const getConnections = async (req, res) => {
       $or: [{ requester: req.user._id }, { recipient: req.user._id }],
     })
       .populate("requester", "name email avatar")
-      .populate("recipient", "name email avatar")
-      .sort({ updatedAt: -1 });
+      .populate("recipient", "name email avatar");
 
-    const contacts = connections.map((c) => {
+    const rooms = connections.map((c) => {
       const isRequester = String(c.requester._id) === String(req.user._id);
       const other = isRequester ? c.recipient : c.requester;
-      return toPublicUser(other);
+      return getDirectRoomId(req.user._id, other._id);
     });
+
+    const lastMessages = rooms.length
+      ? await Message.aggregate([
+          { $match: { room: { $in: rooms }, deletedFor: { $ne: req.user._id } } },
+          { $sort: { createdAt: -1 } },
+          { $group: { _id: "$room", doc: { $first: "$$ROOT" } } },
+        ])
+      : [];
+
+    const unreadCounts = rooms.length
+      ? await Message.aggregate([
+          {
+            $match: {
+              room: { $in: rooms },
+              recipient: req.user._id,
+              deletedFor: { $ne: req.user._id },
+              readBy: { $ne: req.user._id },
+            },
+          },
+          { $group: { _id: "$room", count: { $sum: 1 } } },
+        ])
+      : [];
+
+    const lastMessageByRoom = new Map(lastMessages.map((item) => [item._id, item.doc]));
+    const unreadByRoom = new Map(unreadCounts.map((item) => [item._id, item.count]));
+
+    const contacts = connections
+      .map((c) => {
+        const isRequester = String(c.requester._id) === String(req.user._id);
+        const other = isRequester ? c.recipient : c.requester;
+        const room = getDirectRoomId(req.user._id, other._id);
+        const lastMessage = lastMessageByRoom.get(room);
+        const lastMessageAt = lastMessage?.createdAt || c.updatedAt || c.createdAt;
+        const lastMessagePreview = lastMessage
+          ? lastMessage.deletedForEveryone
+            ? String(lastMessage.sender) === String(req.user._id)
+              ? "You deleted this message"
+              : "This message was deleted"
+            : String(lastMessage.sender) === String(req.user._id)
+            ? "You sent a secure message"
+            : "Encrypted message"
+          : "No messages yet";
+
+        return {
+          ...toPublicUser(other),
+          room,
+          lastMessagePreview,
+          lastMessageAt,
+          unreadCount: unreadByRoom.get(room) || 0,
+        };
+      })
+      .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
 
     res.json(contacts);
   } catch (error) {

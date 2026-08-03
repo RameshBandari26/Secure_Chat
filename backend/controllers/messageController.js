@@ -4,7 +4,7 @@ const Connection = require("../models/Connection");
 // How long after sending a message can still be "deleted for everyone",
 // mirroring WhatsApp's own time-boxed behaviour rather than allowing
 // it forever (which could be used to rewrite history in an open-ended
-// way long after a conversation happened).
+// way long after a conversation happened.
 const DELETE_FOR_EVERYONE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // GET /api/messages?room=...
@@ -79,7 +79,24 @@ const sendMessage = async (req, res) => {
     // clients get it instantly; they decrypt it themselves.
     const io = req.app.get("io");
     if (io) {
+      const summaryUpdate = {
+        room,
+        createdAt: populatedMessage.createdAt,
+        senderId: String(populatedMessage.sender._id),
+        deletedForEveryone: populatedMessage.deletedForEveryone,
+      };
+
       io.to(room).emit("newMessage", populatedMessage);
+      io.to(`user_${recipient}`).emit("chatSummaryUpdate", {
+        ...summaryUpdate,
+        isOwnMessage: false,
+        shouldIncrementUnread: true,
+      });
+      io.to(`user_${req.user._id}`).emit("chatSummaryUpdate", {
+        ...summaryUpdate,
+        isOwnMessage: true,
+        shouldIncrementUnread: false,
+      });
     }
 
     res.status(201).json(populatedMessage);
@@ -136,7 +153,14 @@ const deleteMessage = async (req, res) => {
     // otherwise reject blanking them out).
     await Message.updateOne(
       { _id: message._id },
-      { $set: { content: "", iv: "", deletedForEveryone: true } }
+      {
+        $set: {
+          content: "",
+          iv: "",
+          deletedForEveryone: true,
+          deletedAt: new Date(),
+        },
+      }
     );
 
     const io = req.app.get("io");
@@ -146,6 +170,23 @@ const deleteMessage = async (req, res) => {
         room: message.room,
         mode: "everyone",
       });
+
+      const summaryUpdate = {
+        room: message.room,
+        createdAt: message.createdAt,
+        senderId: String(message.sender),
+        deletedForEveryone: true,
+        shouldIncrementUnread: false,
+      };
+
+      io.to(`user_${message.sender}`).emit("chatSummaryUpdate", {
+        ...summaryUpdate,
+        isOwnMessage: true,
+      });
+      io.to(`user_${message.recipient}`).emit("chatSummaryUpdate", {
+        ...summaryUpdate,
+        isOwnMessage: false,
+      });
     }
 
     res.json({ message: "Message deleted for everyone", mode, id: message._id });
@@ -154,4 +195,32 @@ const deleteMessage = async (req, res) => {
   }
 };
 
-module.exports = { getMessages, sendMessage, deleteMessage };
+const markMessagesRead = async (req, res) => {
+  try {
+    const { room } = req.body;
+    if (!room) {
+      return res.status(400).json({ message: "room is required" });
+    }
+
+    await Message.updateMany(
+      {
+        room,
+        recipient: req.user._id,
+        deletedFor: { $ne: req.user._id },
+        readBy: { $ne: req.user._id },
+      },
+      { $addToSet: { readBy: req.user._id } }
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`user_${req.user._id}`).emit("chatRead", { room });
+    }
+
+    res.json({ message: "Messages marked read", room });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { getMessages, sendMessage, deleteMessage, markMessagesRead };
