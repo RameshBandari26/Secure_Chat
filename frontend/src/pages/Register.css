@@ -38,6 +38,55 @@ body {
     color: transparent;
 }
 
+/* ============================================================
+   Toast notification - replaces the old blocking alert() popups.
+   Shows briefly at the top of the screen and fades itself out,
+   without ever pausing the app or waiting for a click.
+   ============================================================ */
+.toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(90vw, 420px);
+    padding: 14px 22px;
+    border-radius: 10px;
+    font-size: 14.5px;
+    font-weight: 500;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    z-index: 1000;
+    text-align: center;
+    animation: toast-in-out 2.2s ease forwards;
+}
+
+.toast-success {
+    background: linear-gradient(40deg, #ff6a00, #5f10d5);
+}
+
+.toast-error {
+    background: #c0392b;
+}
+
+@keyframes toast-in-out {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -12px);
+    }
+    10% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    85% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -12px);
+    }
+}
+
 .container {
     position: relative;
     width: 850px;
@@ -322,7 +371,11 @@ form{
   .btn {
     width: 100%;
   }
+
+  .toast {
+    top: 16px;
+    max-width: 92vw;
+    font-size: 14px;
+    padding: 12px 18px;
+  }
 }
-
-
-
