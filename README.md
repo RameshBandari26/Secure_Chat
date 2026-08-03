@@ -3,7 +3,7 @@
 A real-time, end-to-end encrypted 1-on-1 chat application with WhatsApp-style
 chat requests, profile management, and message deletion controls.
 
-**Live app:** [https://securechat-platform.netlify.app/register](https://securechat-platform.netlify.app/register)
+**Live app:** [https://securechat-platform.netlify.app/register](https://securechat-platform.netlify.app/)
 
 > ⚠️ The backend (Render free tier) may take **20–30 seconds** to wake up on
 > the first request after being idle. If login/register seems stuck, give it
