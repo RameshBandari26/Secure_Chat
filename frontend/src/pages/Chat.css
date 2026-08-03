@@ -8,6 +8,7 @@ body,
 .chat-container {
   display: flex;
   flex-direction: column;
+  width: 100%;
   max-width: 700px;
   height: 90vh;
   height: 90dvh;
@@ -27,12 +28,20 @@ body,
 /* --- Multi-chat layout: sidebar (chat list) + main conversation --- */
 .chat-container.with-sidebar {
   flex-direction: row;
-  max-width: 1000px;
+  /* flexible width: fills the viewport but caps out at a wider max
+     than before, and never gets too cramped either */
+  width: min(96vw, 1400px);
+  max-width: 1400px;
+  min-width: 0;
 }
 
 .chat-sidebar {
-  width: 280px;
-  min-width: 280px;
+  /* flexible sidebar: grows with the container but stays within a
+     sensible min/max range instead of a fixed pixel width */
+  flex: 0 1 340px;
+  width: clamp(260px, 28%, 380px);
+  min-width: 260px;
+  max-width: 380px;
   display: flex;
   flex-direction: column;
   background: #faf9fc;
@@ -120,6 +129,7 @@ body,
   border-radius: 20px;
   outline: none;
   font-size: 13px;
+  color: #222;
   background: rgba(255, 255, 255, 0.9);
 }
 
@@ -195,7 +205,8 @@ body,
 }
 
 .chat-main {
-  flex: 1;
+  /* takes up all remaining space next to the sidebar */
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -305,7 +316,7 @@ body,
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px clamp(20px, 5%, 60px);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -321,7 +332,9 @@ body,
 }
 
 .chat-bubble {
-  max-width: 75%;
+  /* a wider main panel means bubbles can flex a bit too, but they
+     still shouldn't stretch edge-to-edge on very wide screens */
+  max-width: min(75%, 640px);
   padding: 10px 30px 10px 14px;
   border-radius: 14px;
   position: relative;
@@ -418,7 +431,7 @@ body,
 .chat-input-box {
   display: flex;
   gap: 10px;
-  padding: 14px 16px;
+  padding: 14px clamp(16px, 4%, 40px);
   border-top: 1px solid #eee;
   background: #fff;
   flex-shrink: 0;
@@ -451,22 +464,46 @@ body,
 }
 
 /* ============================================================
+   Wide screens: let the sidebar breathe a little more and cap
+   the whole thing so it doesn't feel absurd on ultrawide monitors.
+   ============================================================ */
+@media (min-width: 1600px) {
+  .chat-container.with-sidebar {
+    width: min(90vw, 1600px);
+    max-width: 1600px;
+  }
+
+  .chat-sidebar {
+    max-width: 420px;
+  }
+}
+
+/* ============================================================
    Mobile layout: show the chat LIST first (WhatsApp-style).
    Selecting a person hides the list and shows the conversation
    full-screen, with a back arrow to return to the list.
    ============================================================ */
 @media (max-width: 768px) {
+  html,
   body {
     overflow: hidden;
+    margin: 0;
+    padding: 0;
   }
 
+  /* Pin to the actual viewport instead of relying on the parent's
+     layout (centering/padding on body or #root), so nothing can
+     squeeze this in from the sides - true edge-to-edge like
+     WhatsApp/Instagram. */
   .chat-container.with-sidebar {
+    position: fixed;
+    inset: 0;
     flex-direction: column;
-    max-width: 100%;
-    width: 100%;
+    width: 100vw;
     height: 100vh;
     height: 100dvh;
     margin: 0;
+    padding: 0;
     border-radius: 0;
     box-shadow: none;
   }
@@ -474,7 +511,9 @@ body,
   .chat-sidebar,
   .chat-main {
     width: 100%;
+    max-width: none;
     min-width: 0;
+    flex: 1 1 auto;
   }
 
   /* Default (no chat open): show the list, hide the conversation panel */
@@ -487,13 +526,62 @@ body,
     display: none;
   }
 
+  /* Give the chat list more breathing room, closer to a native
+     WhatsApp/Instagram list density instead of the compact desktop one */
+  .sidebar-header {
+    padding: 18px 16px 20px;
+  }
+
+  .sidebar-brand-text {
+    font-size: 18px;
+  }
+
+  .sidebar-username {
+    font-size: 14px;
+  }
+
+  .sidebar-search input {
+    padding: 11px 12px 11px 34px;
+    font-size: 14px;
+  }
+
+  .user-list {
+    padding: 6px 4px;
+  }
+
+  .user-list-item {
+    padding: 12px 10px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+
+  .user-name {
+    font-size: 15px;
+  }
+
   .back-btn {
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
+  .chat-header {
+    padding: 14px 16px;
+  }
+
   .chat-header h2 {
-    font-size: 16px;
+    font-size: 17px;
+  }
+
+  .chat-messages {
+    padding: 16px;
+  }
+
+  .chat-bubble {
+    max-width: 85%;
+  }
+
+  .chat-input-box {
+    padding: 12px 14px;
   }
 }
